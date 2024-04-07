@@ -16,7 +16,7 @@ const multiplay = () => {
     const arr = new Array(10).fill(0)
 
     const socket = usePartySocket({
-        host: process.env.NEXT_PUBLIC_PARTYKIT_HOST || 'http://127.0.0.1:1999',
+        host: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
         room: "123",
         onMessage(event) {
           const message = event.data;
