@@ -113,6 +113,9 @@ const multiplay = () => {
         const handleTouchMove = (event: TouchEvent) => {
             event.preventDefault(); // Prevents scrolling and other default touch behaviors
             const position = getMousePosition(event);
+            if(position){
+              sendPixels(position)
+            }
             if (position) paint(position);
         };
 
