@@ -37,8 +37,7 @@ const multiplay = () => {
         <button className='bg-indigo-500' onClick={()=>{rollDice()}}>send event</button>
         <div className={`w-10 h-10 bg-[${currentState}]`}>aaa</div>
         <h1>{index}</h1>
-        {/* {console.log(Object.values(currentState))} */}
-        {Object.values(currentState).map((e:any,i)=>{
+        {typeof currentState == 'object' && Object.values(currentState).map((e:any,i)=>{
           return <div style={{background:`rgb(${e.color})`}} key={i}>{e.color}--||--{e.pos}</div>
         })}
     </div>
