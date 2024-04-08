@@ -2,12 +2,15 @@ import type * as Party from "partykit/server";
 
 const colr = () => Math.floor(Math.random()*255)
 
-interface MyObject {
-  t: {
+type MyObject = {
+  key: {
     color:string,
     pos:number
   };
-  [key: string]: {}; // Index signature
+  [key: string]: {
+    color:string,
+    pos:number,
+  }; // Index signature
 }
 
 export default class Server implements Party.Server {
@@ -51,7 +54,8 @@ export default class Server implements Party.Server {
     if(postMessage.type == "roll-dice"){
       let userList = await this.room.storage.get<MyObject>("userlist");
       if(userList){
-        userList = {...userList,[sender.id]:{...userList[sender.id],pos:Math.floor(Math.random()*200)}}
+        const newPos = (userList[sender.id].pos + Math.floor(Math.random()*6))%10
+        userList = {...userList,[sender.id]:{...userList[sender.id],pos:newPos }}
         await this.room.storage.put("userlist",userList)
       }
       console.log(sender.id,'sender id')
