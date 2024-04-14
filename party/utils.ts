@@ -8,13 +8,13 @@ type UserList = {
 }
 const colr = () => Math.floor(Math.random()*255)
 
-export const handleDiceRoll = async (room: Party.Room, senderId: string,userQueue : string[],userIndex:number) => {
+export const handleDiceRoll = async (room: Party.Room, senderId: string,userQueue : string[],userIndex:number,startTime:number) => {
     let userList = await room.storage.get<UserList>("userlist");
     if (userList) {
         const newPos = (userList[senderId].pos + Math.floor(Math.random() * 5 + 1)) % 10
         userList = { ...userList, [senderId]: { ...userList[senderId], pos: newPos } }
         await room.storage.put("userlist", userList)
-        room.broadcast(JSON.stringify({ type: 'dice-roll', userList, userQueue, userIndex}))
+        room.broadcast(JSON.stringify({ type: 'dice-roll', userList, userQueue, userIndex,startTime}))
     }
 }
 
@@ -32,18 +32,17 @@ export const initGame = async (room: Party.Room, connectionId: string,userQueue:
 }
 
 
-export const playerLeft = async (room: Party.Room, connectionId: string) => {
+export const playerLeft = async (room: Party.Room, connectionId: string,userQueue:string[], userIndex:number) => {
 
 let userList = await room.storage.get<UserList>("userlist");
     if(typeof userList == 'object' && userList){
       delete userList[connectionId]
     }
     await room.storage.put("userlist",userList)
-    room.broadcast(JSON.stringify({type:'init',userList}))
+    room.broadcast(JSON.stringify({type:'init',userList,userQueue,userIndex}))
 
 }
 
-
-export const nextTurn = () =>{
-
-}
+// this.timeOuts.forEach((e)=>{
+//     clearTimeout(e)
+// })

@@ -19,8 +19,8 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   const [userList, setUserList] = React.useState<userListType>({ user: { color: '0,0,0', pos: 0 } })
   const [user, setUser] = React.useState<string>("")
   const [users,setUsers] = React.useState<usersState>({userQueue:[],userIndex:0})
-  const [timer,setTimer] = useState(0)
-  
+  const [timer,setTimer] = useState<number>(0)
+  const serverTime = useRef(0);
   const arr = new Array(10).fill(0)
   
   const socket = usePartySocket({
@@ -34,12 +34,17 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         setUsers({userQueue:parsedMsg.userQueue,userIndex:parsedMsg.userIndex})
       }
       if( parsedMsg.type ==  'dice-roll'){
+        // startTimer()
         setUserList(parsedMsg.userList)
         setUsers({userQueue:parsedMsg.userQueue,userIndex:parsedMsg.userIndex})
         
       }
-      if(parsedMsg.type == 'timer'){
-        startTimer()
+      if(parsedMsg.type == 'time'){
+        console.log('time event')
+        // startTimer()
+        console.log(parsedMsg.userIndex)
+        serverTime.current = parsedMsg.serverTime;
+        setUsers({...users,userIndex:parsedMsg.userIndex })
       }
     },
   });
@@ -48,22 +53,17 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
     setUser(socket._pk)
   },[socket])
 
-  const startTimer = () => {
-    console.log("timer started")
-    if(users?.userIndex > -1 && users?.userQueue[users?.userIndex] == user){
-      const interval = setInterval(()=>{
-        setTimer((time) => time+1)
-      },1000)
-      
-      setTimeout(()=>{
-        clearInterval(interval)
-        console.log("timer ended")
-      },10*1000)
-    }
-  }
+  // const startTimer = () => {
+  //   console.log("timer started")
+  //     const interval = setInterval(()=>{
+  //         const currentTime = new Date().getTime()
+  //         const timeDiff = currentTime - serverTime.current
+  //         console.log(serverTime.current)
+  //         setTimer(timeDiff)
+  //     },1000) 
+  // }
 
   const rollDice = () => {
-    startTimer()
     socket.send(JSON.stringify({ type: "roll-dice" }));
   };
 
@@ -72,7 +72,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
       <h2>{params.roomId}</h2>
       <h2>{timer}</h2>
       <h2>{user}</h2>
-      <button className='bg-indigo-500 mb-8' onClick={() => { rollDice() }}>roll dice</button>
+      { users.userQueue[users.userIndex] == user && <button className='bg-indigo-500 mb-8' onClick={() => { rollDice() }}>roll dice</button>}
       <div className='flex flex-col gap-2'>
         {
           arr.map((e, index) => {
@@ -84,7 +84,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
           })
         }
       </div>
-      <div className='bg-blue-900'>
+      <div className='bg-blue-900 border p-2'>
         {
           users.userQueue?.map((e,i)=>{
             return <div className={`${i == users.userIndex ? 'bg-red-500':''}`} key={i}>{e}</div>
