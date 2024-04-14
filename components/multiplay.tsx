@@ -40,11 +40,11 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         
       }
       if(parsedMsg.type == 'time'){
-        console.log('time event')
+        // console.log('time event')
         // startTimer()
-        console.log(parsedMsg.userIndex)
-        serverTime.current = parsedMsg.serverTime;
-        setUsers({...users,userIndex:parsedMsg.userIndex })
+        // console.log(parsedMsg.userIndex)
+        // serverTime.current = parsedMsg.serverTime;
+        // setUsers({...users,userIndex:parsedMsg.userIndex })
       }
     },
   });

@@ -66,7 +66,7 @@ export default class Server implements Party.Server {
           if (this.gameStarted){
             this.userIndex = (this.userIndex + 1) % this.userQueue.length;
             this.startTime = new Date().getTime()
-            this.room.broadcast(JSON.stringify({ type: 'time', userIndex: this.userIndex, serverStartTime: this.startTime }))
+            // this.room.broadcast(JSON.stringify({ type: 'time', userIndex: this.userIndex, serverStartTime: this.startTime }))
             handleDiceRoll(this.room, sender.id, this.userQueue, this.userIndex, this.startTime);
           }
         }
