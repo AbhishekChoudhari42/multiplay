@@ -1,0 +1,36 @@
+.board {
+    display: grid;
+    grid-template-columns: repeat(10, 40px); 
+    grid-gap: 1px; /* Spacing between squares */
+    padding: 10px; /* Padding around the entire board */
+    background-color: #111; 
+}
+
+.square {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #393939; /* Light grey border for each square */
+    position: relative;
+    font-size: 0.9em; /* Adjust size as needed */
+}
+
+.special-snake {
+    background-color: #f87171; /* Light red for snake squares */
+    color: white; /* White text for better visibility */
+}
+
+.special-ladder {
+    background-color: #4ade80; /* Light green for ladder squares */
+    color: white; /* White text for better visibility */
+}
+
+.snake-ladder {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 0.7em; /* Smaller text for snake or ladder annotations */
+    color: #ffffff; /* White text for readability */
+}

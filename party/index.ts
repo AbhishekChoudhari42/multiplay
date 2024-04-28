@@ -1,86 +1,94 @@
 import type * as Party from "partykit/server";
-import { handleDiceRoll, initGame, playerLeft } from "./utils";
+import { getRandomColor, getUserIndexByConnection, getUserIndexByUsername } from "./utils";
 
-type UserList = {
-  [key: string]: {
-    color: string,
-    pos: number,
-  }; // Index signature
+type User = {
+  name: string,
+  pos: number,
+  bal: number,
+  colour: string,
+  connId: string
 }
 
 export default class Server implements Party.Server {
-  
+
   constructor(readonly room: Party.Room) {
-    
+
   }
 
   gameStarted: boolean = false;
-  userQueue: string[] = [];
+  userQueue: User[] = [];
   userIndex: number = 0;
-  timeOuts: NodeJS.Timeout[] = [];
   startTime: number = 0;
-  
+
   async onClose(connection: Party.Connection<unknown>) {
-    console.log(connection.id, " -- left")
-    if (this.userQueue.length == 1) {
-      this.room.storage.delete('userlist')
+    if (this.userQueue.length == 1){
+      this.userQueue = []
       this.gameStarted = false
       return
     }
-    const index = this.userQueue.indexOf(connection.id)
+    const index = this.userQueue.findIndex(user => user.connId == connection.id)
     this.userQueue.splice(index, 1)
     this.userIndex = (this.userIndex) % this.userQueue.length;
-    playerLeft(this.room, connection.id,this.userQueue,this.userIndex)
+    this.room.broadcast(JSON.stringify({type:'user_left_response',userQueue:this.userQueue, userIndex: this.userIndex}))
   }
 
   async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
-    if (!this.gameStarted) {
-      this.userQueue.push(conn.id)
-      initGame(this.room, conn.id, this.userQueue, this.userIndex)
-    }
+
   }
 
-  // startGame() {
-  //   this.userIndex = (this.userIndex + 1) % this.userQueue.length;
-  //   this.room.broadcast(JSON.stringify({ type: 'time', userIndex: this.userIndex, serverTime: this.startTime, userQueue: this.userQueue }))
-  //   this.startTime = new Date().getTime()
-  //   let timeout = setTimeout(() => {
-  //     this.startGame()
-  //   }, 1000 * 5)
-  //   this.timeOuts.push(timeout)
-  // }
-
   async onMessage(message: string, sender: Party.Connection) {
-    const postMessage = JSON.parse(message)
-    console.log(this.userQueue, ' -- [', this.userIndex, ']');
-    switch (postMessage.type) {
-      case "roll-dice":
-        if (this.userQueue[this.userIndex] == sender.id) {
 
-          // on dice roll by first user when game is not started
-          if (!this.gameStarted && this.userIndex == 0 && this.startTime == 0) {
-               this.gameStarted = true
-              //  this.startGame()
+    const postMessage = JSON.parse(message)
+
+    switch (postMessage.type) {
+
+      case "user_join_event":
+
+        if (this.gameStarted || this.userQueue.length == 4) {
+          sender.close()
+          return
+        }
+
+        let currentUserIndexByName = getUserIndexByUsername(postMessage.username, this.userQueue)
+        let currentUserIndexByConn = getUserIndexByConnection(sender.id, this.userQueue)
+
+
+        if (currentUserIndexByName > -1) {
+
+          this.userQueue[currentUserIndexByName].connId = sender.id
+
+       } else if (currentUserIndexByConn > -1) {
+
+          this.userQueue[currentUserIndexByConn].name = postMessage.username
+
+        } else {
+
+          this.userQueue.push({
+            name: postMessage.username,
+            colour: getRandomColor(),
+             pos: 0,
+            bal: 1500,
+            connId: sender.id
+          })
+
+        }
+        this.room.broadcast(JSON.stringify({type:'user_join_response',userQueue:this.userQueue, userIndex: this.userIndex}))
+        break;
+      case "dice_roll_event":
+        if(this.userQueue[this.userIndex].connId == sender.id){
+          if(this.userIndex == 0 && !this.gameStarted){
+            this.gameStarted = true
           }
-          // on all dice rolls 
-          if (this.gameStarted){
+          if(this.gameStarted){
+            const dice = Math.ceil(Math.random()*5.999)
+            const currentPos = this.userQueue[this.userIndex].pos
+            this.userQueue[this.userIndex].pos = (dice+currentPos <= 99 ? currentPos + dice : currentPos)
             this.userIndex = (this.userIndex + 1) % this.userQueue.length;
-            this.startTime = new Date().getTime()
-            // this.room.broadcast(JSON.stringify({ type: 'time', userIndex: this.userIndex, serverStartTime: this.startTime }))
-            handleDiceRoll(this.room, sender.id, this.userQueue, this.userIndex, this.startTime);
+            this.room.broadcast(JSON.stringify({type:'dice_roll_response',userQueue:this.userQueue, userIndex: this.userIndex,dice}))
           }
         }
         break;
     }
-  }
-
-  async onRequest(req: Party.Request) {
-
-    if (req.method == 'POST') {
-      console.log(req)
-      return new Response("POST", { status: 200 })
-    }
-    return new Response("Method not allowed", { status: 400 })
   }
 }
 

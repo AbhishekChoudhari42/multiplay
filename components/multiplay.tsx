@@ -1,96 +1,113 @@
 "use client"
 import React, { useRef, useEffect, useState } from 'react'
 import usePartySocket from "partysocket/react";
+import { useRouter } from 'next/navigation';
+import { useStore } from '@/store/store';
+import { UserType, UserStateType, StoreType } from '@/utils/types'
+import './board.css';
 
-type userListType = {
-  user: {
-    color: string,
-    pos: number
+const generateZigzag = (size: number): number[] => {
+  let total = size * size;
+  let matrix: number[] = [];
+  let leftToRight = true;
+
+  for (let row = 0; row < size; row++) {
+    let currentRow: number[] = new Array(size);
+    for (let col = 0; col < size; col++) {
+      let index = leftToRight ? col : (size - 1 - col);
+      currentRow[index] = total--;
+    }
+    matrix.push(...currentRow);
+    leftToRight = !leftToRight; // Toggle direction
   }
-}
 
-type usersState = {
-  userQueue:string[],
-  userIndex:number
-}
+  return matrix;
+};
 
 const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
-  const [userList, setUserList] = React.useState<userListType>({ user: { color: '0,0,0', pos: 0 } })
-  const [user, setUser] = React.useState<string>("")
-  const [users,setUsers] = React.useState<usersState>({userQueue:[],userIndex:0})
-  const [timer,setTimer] = useState<number>(0)
-  const serverTime = useRef(0);
-  const arr = new Array(10).fill(0)
-  
+  const store = useStore<StoreType>(state => state)
+  const [users, setUsers] = React.useState<UserStateType>({ userQueue: [], userIndex: 0 })
+  const router = useRouter()
+
+  if (store.user == '') {
+    router.push('/')
+  }
+
+  const size = 10;
+  const zigzagNumbers = generateZigzag(size);
+  let board = []
+
+  let posMap = ['left-0 top-0','right-0 top-0','left-0 bottom-0','right-0 bottom-0']
+
+  for (let i = 0; i < zigzagNumbers.length; i++) {
+    const number = zigzagNumbers[i];
+    board.push(
+      <div className={`square`} key={i}>
+        {number}
+        <div className='absolute top-0 left-0 w-full h-full'>
+          {users.userQueue.length > 0 && Object.values(users.userQueue).map((e: UserType, i) => {
+            return ((users.userQueue[i].pos + 1) == number && e.colour && <div className={`w-[10px] h-[10px] m-[1px] rounded-md absolute ${posMap[i]}`} style={{ background: e.colour }} key={e.colour + i}></div>)
+          })}
+        </div>
+      </div>
+    );
+  }
+
   const socket = usePartySocket({
     host: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     room: params.roomId ?? 'default_room',
-    onMessage(event) {
-      const message = event.data;
-      const parsedMsg = JSON.parse(message);
-      if (parsedMsg.type == 'init') {
-        setUserList(parsedMsg.userList)
-        setUsers({userQueue:parsedMsg.userQueue,userIndex:parsedMsg.userIndex})
-      }
-      if( parsedMsg.type ==  'dice-roll'){
-        // startTimer()
-        setUserList(parsedMsg.userList)
-        setUsers({userQueue:parsedMsg.userQueue,userIndex:parsedMsg.userIndex})
-        
-      }
-      if(parsedMsg.type == 'time'){
-        // console.log('time event')
-        // startTimer()
-        // console.log(parsedMsg.userIndex)
-        // serverTime.current = parsedMsg.serverTime;
-        // setUsers({...users,userIndex:parsedMsg.userIndex })
-      }
+    onClose() {
+      router.push('/')
     },
+    onOpen() {
+      if (store.user != '') socket.send(JSON.stringify({ type: "user_join_event", username: store.user }));
+    }
   });
-  
-  useEffect(()=>{
-    setUser(socket._pk)
-  },[socket])
 
-  // const startTimer = () => {
-  //   console.log("timer started")
-  //     const interval = setInterval(()=>{
-  //         const currentTime = new Date().getTime()
-  //         const timeDiff = currentTime - serverTime.current
-  //         console.log(serverTime.current)
-  //         setTimer(timeDiff)
-  //     },1000) 
-  // }
+  socket.onmessage = (event) => {
+
+    const message = event.data;
+    const parsedMsg = JSON.parse(message);
+
+    switch (parsedMsg.type) {
+
+      case 'user_join_response':
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        break;
+
+      case 'user_left_response':
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        break;
+
+      case 'dice_roll_response':
+        console.log(parsedMsg.dice)
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        break;
+    }
+  }
 
   const rollDice = () => {
-    socket.send(JSON.stringify({ type: "roll-dice" }));
+    console.log("diceee")
+    socket.send(JSON.stringify({ type: "dice_roll_event" }));
   };
 
   return (
     <div className='flex flex-col'>
-      <h2>{params.roomId}</h2>
-      <h2>{timer}</h2>
-      <h2>{user}</h2>
-      { users.userQueue[users.userIndex] == user && <button className='bg-indigo-500 mb-8' onClick={() => { rollDice() }}>roll dice</button>}
-      <div className='flex flex-col gap-2'>
+
+      <div className="board rounded-md bg-black">
         {
-          arr.map((e, index) => {
-            return <div key={index} className={`w-full min-h-[20px] bg-neutral-800 border border-neutral-700 p-1 gap-2 flex justify-between items-center`}>
-              {typeof userList == 'object' && Object.values(userList).map((e: any, i) => {
-                return (index == e.pos && <div className='w-[20px] flex items-center justify-center' style={{ background: `rgb(${e.color})` }} key={i}><p>{e.pos}</p></div>)
-              })}
-            </div>
-          })
+          board
         }
       </div>
-      <div className='bg-blue-900 border p-2'>
-        {
-          users.userQueue?.map((e,i)=>{
-            return <div className={`${i == users.userIndex ? 'bg-red-500':''}`} key={i}>{e}</div>
-          })
-        }
-      </div>
+      {
+        <button
+          disabled={users.userQueue[users.userIndex]?.name != store.user}
+          className={`bg-indigo-500 mt-8 p-2 rounded-md ${users.userQueue[users.userIndex]?.name == store.user ? 'opacity-100' : 'opacity-10'}`}
+          onClick={rollDice}>roll dice
+        </button>
+      }
+
     </div>
   )
 }
