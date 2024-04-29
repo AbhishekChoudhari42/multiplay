@@ -47,11 +47,11 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   for (let i = 0; i < zigzagNumbers.length; i++) {
     const number = zigzagNumbers[i];
     board.push(
-      <div className={`square ${users.userQueue.findIndex(e => e.pos == number - 1) > -1 ?? 'special-snake'}`} key={i}>
+      <div key={number} className={`square ${users.userQueue.findIndex(e => e.pos == number - 1) > -1 ?? 'special-snake'}`}>
         {/* {number} */}
         <div className='absolute top-0 left-0 w-full h-full'>
           {users.userQueue.length > 0 && Object.values(users.userQueue).map((e: UserType, i) => {
-            return ((users.userQueue[i].pos + 1) == number && e.colour && <motion.div layoutId={e.name} className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${posMap[i]}`} style={{ background: e.colour }} key={e.colour + i}></motion.div>)
+            return ((users.userQueue[i].pos + 1) == number && e.colour && <motion.div key={e.name+e.colour} layoutId={e.name} className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${posMap[i]}`} style={{ background: e.colour }}></motion.div>)
           })}
         </div>
       </div>
@@ -88,15 +88,17 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         toast( users.userQueue[users.userIndex].name +" : "+ parsedMsg.dice,{duration:1000})
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
         break;
-
       case 'snake_or_ladder':
-        
-        if(parsedMsg.outcome == 'snake') toast(users.userQueue[users.userIndex].name, { icon: '🐍',duration:2000});
         if(parsedMsg.outcome == 'ladder') toast(users.userQueue[users.userIndex].name, { icon: '🔼',duration:2000});
-
-        setTimeout(() => {
+        if(parsedMsg.outcome == 'snake') toast(users.userQueue[users.userIndex].name, { icon: '🐍',duration:2000});
+        
+        let tempQueue = [...parsedMsg.userQueue]
+        tempQueue[parsedMsg.currentUserIndex] = parsedMsg.tempPlayer
+        setUsers({ userQueue: tempQueue, userIndex: parsedMsg.userIndex })
+        setTimeout(()=>{
           setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
-        }, 500)
+        },1000)
+
         break;
       case 'player_won':
         setPlayerWon(true)
@@ -122,7 +124,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
       <div className='w-full bg-black mb-8 flex gap-2'>
            {
               users.userQueue.map(e=>{
-                return <div className='p-2 w-full  rounded-md max-w-[25%]' style={{ background: e.colour }}>{e.name}</div>
+                return <div key={e.colour+e.name} className='p-2 w-full  rounded-md max-w-[25%]' style={{ background: e.colour }}>{e.name}</div>
               })
            }
       </div>
