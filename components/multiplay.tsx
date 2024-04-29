@@ -66,6 +66,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
     },
     onOpen() {
       if (store.user != '') socket.send(JSON.stringify({ type: "user_join_event", username: store.user }));
+      toast.success('room joined!')
     }
   });
 
