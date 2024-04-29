@@ -6,7 +6,8 @@ import { useStore } from '@/store/store';
 import { UserType, UserStateType, StoreType } from '@/utils/types'
 import './board.css';
 import Confetti from 'react-confetti'
-
+import {motion} from 'framer-motion'
+import toast, { Toaster } from 'react-hot-toast';
 
 const generateZigzag = (size: number): number[] => {
   let total = size * size;
@@ -50,7 +51,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         {/* {number} */}
         <div className='absolute top-0 left-0 w-full h-full'>
           {users.userQueue.length > 0 && Object.values(users.userQueue).map((e: UserType, i) => {
-            return ((users.userQueue[i].pos + 1) == number && e.colour && <div className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${posMap[i]}`} style={{ background: e.colour }} key={e.colour + i}></div>)
+            return ((users.userQueue[i].pos + 1) == number && e.colour && <motion.div layoutId={e.name} className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${posMap[i]}`} style={{ background: e.colour }} key={e.colour + i}></motion.div>)
           })}
         </div>
       </div>
@@ -84,13 +85,18 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         break;
 
       case 'dice_roll_response':
-        console.log(parsedMsg.dice)
+        toast( users.userQueue[users.userIndex].name +" : "+ parsedMsg.dice,{duration:1000})
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
         break;
+
       case 'snake_or_ladder':
+        
+        if(parsedMsg.outcome == 'snake') toast(users.userQueue[users.userIndex].name, { icon: '🐍',duration:2000});
+        if(parsedMsg.outcome == 'ladder') toast(users.userQueue[users.userIndex].name, { icon: '🔼',duration:2000});
+
         setTimeout(() => {
           setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
-        }, 1 * 1000)
+        }, 500)
         break;
       case 'player_won':
         setPlayerWon(true)
@@ -107,13 +113,18 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
   return (
     <div className='flex flex-col'>
+      <Toaster />
       {playerWon &&
         <div className='confetti'>
           <Confetti height={window.innerHeight} width={window.innerWidth} />
         </div>
       }
-      <div className='w-full'>
-        
+      <div className='w-full bg-black mb-8 flex gap-2'>
+           {
+              users.userQueue.map(e=>{
+                return <div className='p-2 w-full  rounded-md max-w-[25%]' style={{ background: e.colour }}>{e.name}</div>
+              })
+           }
       </div>
       <div className="board rounded-md bg-black">
         {

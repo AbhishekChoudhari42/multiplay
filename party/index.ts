@@ -100,8 +100,7 @@ export default class Server implements Party.Server {
             }
             if(outcome.pos){
               this.userQueue[this.userIndex].pos = outcome.pos
-              console.log(pos,"==",outcome.pos)
-              this.room.broadcast(JSON.stringify({type:'snake_or_ladder',userQueue:this.userQueue, userIndex: this.userIndex}))
+              this.room.broadcast(JSON.stringify({type:'snake_or_ladder',userQueue:this.userQueue, userIndex: this.userIndex,outcome:outcome.value}))
             }
           }
         }
