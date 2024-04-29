@@ -1,5 +1,5 @@
 import type * as Party from "partykit/server";
-import { getRandomColor, getUserIndexByConnection, getUserIndexByUsername } from "./utils";
+import { getRandomColor, getUserIndexByConnection, getUserIndexByUsername ,snakes_ladders_pos} from "./utils";
 
 type User = {
   name: string,
@@ -85,6 +85,24 @@ export default class Server implements Party.Server {
             this.userQueue[this.userIndex].pos = (dice+currentPos <= 99 ? currentPos + dice : currentPos)
             this.userIndex = (this.userIndex + 1) % this.userQueue.length;
             this.room.broadcast(JSON.stringify({type:'dice_roll_response',userQueue:this.userQueue, userIndex: this.userIndex,dice}))
+            if(this.userQueue[this.userIndex].pos == 99){
+              this.room.broadcast(JSON.stringify({type:'player_won'}))
+            }
+            const pos = String(this.userQueue[this.userIndex].pos)
+            let outcome = {pos:0,value:''}
+            
+            if(snakes_ladders_pos["snakes"][pos]){
+              outcome.value = 'snake'
+              outcome.pos = snakes_ladders_pos["snakes"][pos]
+            }else if(snakes_ladders_pos["ladders"][pos]){
+              outcome.value = 'ladder'
+              outcome.pos = snakes_ladders_pos["ladders"][pos]
+            }
+            if(outcome.pos){
+              this.userQueue[this.userIndex].pos = outcome.pos
+              console.log(pos,"==",outcome.pos)
+              this.room.broadcast(JSON.stringify({type:'snake_or_ladder',userQueue:this.userQueue, userIndex: this.userIndex}))
+            }
           }
         }
         break;

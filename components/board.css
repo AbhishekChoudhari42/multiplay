@@ -1,18 +1,18 @@
 .board {
     display: grid;
-    grid-template-columns: repeat(10, 40px); 
-    grid-gap: 1px; /* Spacing between squares */
-    padding: 10px; /* Padding around the entire board */
+    grid-template-columns: repeat(10, 38px); 
     background-color: #111; 
+    background-image: url('/bg-image.png');
+    background-size: contain;
+    background-position: center;
 }
 
 .square {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #393939; /* Light grey border for each square */
     position: relative;
     font-size: 0.9em; /* Adjust size as needed */
 }
@@ -33,4 +33,19 @@
     right: 2px;
     font-size: 0.7em; /* Smaller text for snake or ladder annotations */
     color: #ffffff; /* White text for readability */
+}
+
+.confetti{
+    animation: op 11s ease;
+}
+@keyframes op{
+    0%{
+        opacity: 1;
+    }
+    50%{
+        opacity: 1;
+    }
+    100%{
+        opacity: 0;
+    }
 }
