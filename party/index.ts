@@ -1,29 +1,21 @@
 import type * as Party from "partykit/server";
-import { getRandomColor, getUserIndexByConnection, getUserIndexByUsername, snakes_ladders_pos } from "./utils";
-
-type User = {
-  name: string,
-  pos: number,
-  bal: number,
-  colour: string,
-  connId: string
-}
+import { getRandomColor, snakes_ladders_pos ,User} from "./utils";
 
 export default class Server implements Party.Server {
 
-  constructor(readonly room: Party.Room) {
-
-  }
+  constructor(readonly room: Party.Room) { }
 
   gameStarted: boolean = false;
   userQueue: User[] = [];
   userIndex: number = 0;
-  startTime: number = 0;
+  winners: string[] = [];
 
   async onClose(connection: Party.Connection<unknown>) {
     if (this.userQueue.length == 1) {
-      this.userQueue = []
       this.gameStarted = false
+      this.userQueue = []
+      this.userIndex = 0
+      this.winners = []
       return
     }
     const index = this.userQueue.findIndex(user => user.connId == connection.id)
@@ -32,9 +24,7 @@ export default class Server implements Party.Server {
     this.room.broadcast(JSON.stringify({ type: 'user_left_response', userQueue: this.userQueue, userIndex: this.userIndex }))
   }
 
-  async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {
-
-  }
+  async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {}
 
   async onMessage(message: string, sender: Party.Connection) {
 
@@ -49,9 +39,8 @@ export default class Server implements Party.Server {
           return
         }
 
-        let currentUserIndexByName = getUserIndexByUsername(postMessage.username, this.userQueue)
-        let currentUserIndexByConn = getUserIndexByConnection(sender.id, this.userQueue)
-
+        let currentUserIndexByName = this.userQueue.findIndex(e=>e.name == postMessage.username)
+        let currentUserIndexByConn = this.userQueue.findIndex(e=>e.connId == sender.id)
 
         if (currentUserIndexByName > -1) {
 
@@ -72,9 +61,16 @@ export default class Server implements Party.Server {
           })
 
         }
+
         this.room.broadcast(JSON.stringify({ type: 'user_join_response', userQueue: this.userQueue, userIndex: this.userIndex }))
         break;
+
       case "dice_roll_event":
+
+      if (this.winners.includes(this.userQueue[this.userIndex].name)) {
+        return
+      }
+
         if (this.userQueue[this.userIndex].connId == sender.id) {
           if (this.userIndex == 0 && !this.gameStarted) {
             this.gameStarted = true
@@ -82,40 +78,42 @@ export default class Server implements Party.Server {
           if (this.gameStarted) {
 
             const dice = Math.ceil(Math.random() * 5.999)
-            
-            const currentUserIndex = this.userIndex 
-            const currentPos = this.userQueue[this.userIndex].pos
-            
-            // set position of the current player 
+            const currentUserIndex = this.userIndex
+            const currentPos = this.userQueue[currentUserIndex].pos
+            let count = 0
             this.userQueue[this.userIndex].pos = (dice + currentPos <= 99 ? currentPos + dice : currentPos)
-            
+
+            // set position of the current player 
+
             // update player to next player
             this.userIndex = (currentUserIndex + 1) % this.userQueue.length;
 
             // player reaches the end of the game
             if (this.userQueue[currentUserIndex].pos == 99) {
-              this.room.broadcast(JSON.stringify({ type: 'player_won' }))
+              const currentUser = this.userQueue[currentUserIndex].name
+              this.winners.push(currentUser)
+              this.room.broadcast(JSON.stringify({ type: 'player_won', winners: this.winners }))
             }
 
             let outcome = { pos: 0, value: '' }
-            
+
             const pos = String(this.userQueue[currentUserIndex].pos)
 
-            if (snakes_ladders_pos["snakes"][pos]){
+            if (snakes_ladders_pos["snakes"][pos]) {
 
-              outcome = {value:'snake',pos:snakes_ladders_pos["snakes"][pos]}
-            
-            } else if (snakes_ladders_pos["ladders"][pos]){
-              
-              outcome = {value:'ladder',pos:snakes_ladders_pos["ladders"][pos]}
-            
+              outcome = { value: 'snake', pos: snakes_ladders_pos["snakes"][pos] }
+
+            } else if (snakes_ladders_pos["ladders"][pos]) {
+
+              outcome = { value: 'ladder', pos: snakes_ladders_pos["ladders"][pos] }
+
             }
             if (outcome.pos == 0) {
-              this.room.broadcast(JSON.stringify({ type: 'dice_roll_response', userQueue: this.userQueue, userIndex: this.userIndex, dice }))
-            }else{
-              const tempPlayer = {...this.userQueue[currentUserIndex]}
+              this.room.broadcast(JSON.stringify({ type: 'dice_roll_response', userQueue: this.userQueue, userIndex: this.userIndex, dice, winners: this.winners }))
+            } else {
+              const tempPlayer = { ...this.userQueue[currentUserIndex] }
               this.userQueue[currentUserIndex].pos = outcome.pos
-              this.room.broadcast(JSON.stringify({ type: 'snake_or_ladder', userQueue: this.userQueue, userIndex: this.userIndex , currentUserIndex  , outcome: outcome.value, tempPlayer: tempPlayer, dice }))
+              this.room.broadcast(JSON.stringify({ type: 'snake_or_ladder', userQueue: this.userQueue, userIndex: this.userIndex, currentUserIndex, outcome: outcome.value, tempPlayer: tempPlayer, dice }))
             }
           }
         }

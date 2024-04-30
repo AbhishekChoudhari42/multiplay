@@ -8,7 +8,8 @@ export type UserType = {
   
 export type UserStateType = {
     userQueue: UserType[],
-    userIndex: number
+    userIndex: number,
+    winners:string[]
 }
   
 export type StoreType = {

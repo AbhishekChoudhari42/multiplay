@@ -1,37 +1,24 @@
 "use client"
 import React, { useRef, useEffect, useState } from 'react'
+import { UserType, UserStateType, StoreType } from '@/utils/types'
+import { generateZigzag } from '@/utils'
+import './board.css';
+
 import usePartySocket from "partysocket/react";
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/store/store';
-import { UserType, UserStateType, StoreType } from '@/utils/types'
-import './board.css';
-import Confetti from 'react-confetti'
+
 import {motion} from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast';
+import Confetti from 'react-confetti'
 
-const generateZigzag = (size: number): number[] => {
-  let total = size * size;
-  let matrix: number[] = [];
-  let leftToRight = true;
-
-  for (let row = 0; row < size; row++) {
-    let currentRow: number[] = new Array(size);
-    for (let col = 0; col < size; col++) {
-      let index = leftToRight ? col : (size - 1 - col);
-      currentRow[index] = total--;
-    }
-    matrix.push(...currentRow);
-    leftToRight = !leftToRight; // Toggle direction
-  }
-
-  return matrix;
-};
 
 const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
   const store = useStore<StoreType>(state => state)
   const [playerWon, setPlayerWon] = useState(false)
-  const [users, setUsers] = React.useState<UserStateType>({ userQueue: [], userIndex: 0 })
+  const [users, setUsers] = React.useState<UserStateType>({ userQueue: [], userIndex: 0,winners:[] })
+
   const router = useRouter()
 
   if (store.user == '') {
@@ -42,16 +29,14 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   const zigzagNumbers = generateZigzag(size);
   let board = []
 
-  let posMap = ['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0']
-
   for (let i = 0; i < zigzagNumbers.length; i++) {
     const number = zigzagNumbers[i];
+    const postionMap = ['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0']
     board.push(
       <div key={number} className={`square ${users.userQueue.findIndex(e => e.pos == number - 1) > -1 ?? 'special-snake'}`}>
-        {/* {number} */}
         <div className='absolute top-0 left-0 w-full h-full'>
           {users.userQueue.length > 0 && Object.values(users.userQueue).map((e: UserType, i) => {
-            return ((users.userQueue[i].pos + 1) == number && e.colour && <motion.div key={e.name+e.colour} layoutId={e.name} className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${posMap[i]}`} style={{ background: e.colour }}></motion.div>)
+            return ((users.userQueue[i].pos + 1) == number && e.colour && <motion.div key={e.name+e.colour} layoutId={e.name} className={`w-[15px] h-[15px] m-[1px] border-2 border-black rounded-lg absolute ${postionMap[i]}`} style={{ background: e.colour }}></motion.div>)
           })}
         </div>
       </div>
@@ -74,33 +59,39 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
     const message = event.data;
     const parsedMsg = JSON.parse(message);
-
+    const username = users.userQueue[users.userIndex]?.name
+    
     switch (parsedMsg.type) {
 
       case 'user_join_response':
-        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:[] })
         break;
 
       case 'user_left_response':
-        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:users.winners})
         break;
 
       case 'dice_roll_response':
-        toast( users.userQueue[users.userIndex].name +" : "+ parsedMsg.dice,{duration:1000})
-        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
+        
+        toast( username +" : "+ parsedMsg.dice,{duration:1000})
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:parsedMsg.winners })
         break;
       case 'snake_or_ladder':
-        if(parsedMsg.outcome == 'ladder') toast(users.userQueue[users.userIndex].name, { icon: '🔼',duration:2000});
-        if(parsedMsg.outcome == 'snake') toast(users.userQueue[users.userIndex].name, { icon: '🐍',duration:2000});
+
+        if(parsedMsg.outcome == 'ladder') toast(username, { icon: '🔼',duration:2000});
+        if(parsedMsg.outcome == 'snake') toast(username, { icon: '🐍',duration:2000});
         
         let tempQueue = [...parsedMsg.userQueue]
         tempQueue[parsedMsg.currentUserIndex] = parsedMsg.tempPlayer
-        setUsers({ userQueue: tempQueue, userIndex: parsedMsg.userIndex })
+        
+        setUsers({ userQueue: tempQueue, userIndex: parsedMsg.userIndex,winners:users.winners })
+        
         setTimeout(()=>{
-          setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex })
-        },1000)
-
+          setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:users.winners })
+        },500)
+        
         break;
+
       case 'player_won':
         setPlayerWon(true)
         setTimeout(() => {
@@ -116,16 +107,19 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
   return (
     <div className='flex flex-col'>
-      <Toaster />
+
+      <Toaster  position='top-center' />
       {playerWon &&
         <div className='confetti'>
           <Confetti height={window.innerHeight} width={window.innerWidth} />
         </div>
       }
-      <div className='w-full bg-black mb-8 flex gap-2'>
+      <div className='w-full bg-black mb-8 flex gap-4'>
            {
               users.userQueue.map(e=>{
-                return <div key={e.colour+e.name} className='p-2 w-full  rounded-md max-w-[25%]' style={{ background: e.colour }}>{e.name}</div>
+                const winner = users.winners.includes(e.name)
+                const winnerIndex = users.winners.indexOf(e.name)
+                return <div key={e.colour+e.name} className='p-2 w-full  rounded-md max-w-[25%] relative' style={{ background: e.colour,border:winner ? '2px solid white':`2px solid ${e.colour + '66'}`}}>{e.name} {winnerIndex > -1 && <span className='absolute w-[25px] h-[25px] p-2 top-[-10px] right-[-10px] rounded-lg border-1 border-white flex justify-center items-center' style={{ background: 'white',border:'2px solid white'}}><p className='text-black'>{winnerIndex+1}</p></span>}</div>
               })
            }
       </div>
