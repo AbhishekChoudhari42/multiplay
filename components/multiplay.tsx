@@ -12,7 +12,6 @@ import {motion} from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast';
 import Confetti from 'react-confetti'
 
-
 const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
   const store = useStore<StoreType>(state => state)
@@ -30,8 +29,10 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   let board = []
 
   for (let i = 0; i < zigzagNumbers.length; i++) {
+
     const number = zigzagNumbers[i];
     const postionMap = ['left-0 top-0', 'right-0 top-0', 'left-0 bottom-0', 'right-0 bottom-0']
+
     board.push(
       <div key={number} className={`square ${users.userQueue.findIndex(e => e.pos == number - 1) > -1 ?? 'special-snake'}`}>
         <div className='absolute top-0 left-0 w-full h-full'>
@@ -64,6 +65,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
     switch (parsedMsg.type) {
 
       case 'user_join_response':
+        console.log(parsedMsg)
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:[] })
         break;
 
@@ -71,32 +73,35 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:users.winners})
         break;
 
-      case 'dice_roll_response':
+      case 'dice_roll_response':        
+        console.log(parsedMsg,"parsedMsg")
+        console.log(parsedMsg.userQueue[parsedMsg.currentUserIndex].pos,"pos")
+        toast( parsedMsg.userQueue[parsedMsg.currentUserIndex].name +" : "+ parsedMsg.dice,{duration:1000})
+        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.nextUserIndex,winners:parsedMsg.winners })
         
-        toast( username +" : "+ parsedMsg.dice,{duration:1000})
-        setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:parsedMsg.winners })
+        // if player wins
+        if(parsedMsg.userQueue[parsedMsg.currentUserIndex].pos == 99){
+          setPlayerWon(true)
+          setTimeout(() => { setPlayerWon(false) }, 5 * 1000)
+        }
+        
         break;
+      
       case 'snake_or_ladder':
 
-        if(parsedMsg.outcome == 'ladder') toast(username, { icon: '🔼',duration:2000});
-        if(parsedMsg.outcome == 'snake') toast(username, { icon: '🐍',duration:2000});
-        
+        toast(username, { icon: parsedMsg.outcome == 'ladder' ? '🔼':'🐍',duration:2000}); 
         let tempQueue = [...parsedMsg.userQueue]
         tempQueue[parsedMsg.currentUserIndex] = parsedMsg.tempPlayer
-        
-        setUsers({ userQueue: tempQueue, userIndex: parsedMsg.userIndex,winners:users.winners })
-        
+        // set to new pos
+        setUsers({ userQueue: tempQueue, userIndex: parsedMsg.nextUserIndex,winners:users.winners })
+        // set to pos outcome
         setTimeout(()=>{
-          setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:users.winners })
+          setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.nextUserIndex,winners:users.winners })
         },500)
-        
         break;
 
       case 'player_won':
-        setPlayerWon(true)
-        setTimeout(() => {
-          setPlayerWon(false)
-        }, 10 * 1000)
+        console.log("player")  
     }
   }
 
@@ -104,7 +109,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
     console.log("diceee")
     socket.send(JSON.stringify({ type: "dice_roll_event" }));
   };
-
+  
   return (
     <div className='flex flex-col'>
 
@@ -128,14 +133,13 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
           board
         }
       </div>
-      {
+      { 
         <button
-          disabled={users.userQueue[users.userIndex]?.name != store.user}
-          className={`bg-indigo-500 mt-8 p-2 rounded-md ${users.userQueue[users.userIndex]?.name == store.user ? 'opacity-100' : 'opacity-10'}`}
+          disabled={(users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99) }
+          className={`bg-indigo-500 mt-8 p-2 rounded-md ${ (users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99)  ? 'opacity-40' : 'opacity-100'}`}
           onClick={rollDice}>roll dice
         </button>
       }
-
     </div>
   )
 }

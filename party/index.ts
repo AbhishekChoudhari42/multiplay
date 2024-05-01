@@ -1,5 +1,5 @@
 import type * as Party from "partykit/server";
-import { getRandomColor, snakes_ladders_pos ,User} from "./utils";
+import { getRandomColor, User , getNextUserIndex, getCurrentPositionOutcome} from "./utils";
 
 export default class Server implements Party.Server {
 
@@ -11,21 +11,27 @@ export default class Server implements Party.Server {
   winners: string[] = [];
 
   async onClose(connection: Party.Connection<unknown>) {
+
     if (this.userQueue.length == 1) {
+
       this.gameStarted = false
       this.userQueue = []
       this.userIndex = 0
       this.winners = []
       return
+
     }
+    
     const index = this.userQueue.findIndex(user => user.connId == connection.id)
-    this.userQueue.splice(index, 1)
-    this.userIndex = (this.userIndex) % this.userQueue.length;
+    this.userQueue.splice(index,1)
+
+    this.winners = this.winners.filter(e => e != this.userQueue[index].name)
+    
+    this.userIndex = getNextUserIndex(this.userQueue,this.userIndex,this.winners)
+    
     this.room.broadcast(JSON.stringify({ type: 'user_left_response', userQueue: this.userQueue, userIndex: this.userIndex }))
   }
-
-  async onConnect(conn: Party.Connection, ctx: Party.ConnectionContext) {}
-
+ 
   async onMessage(message: string, sender: Party.Connection) {
 
     const postMessage = JSON.parse(message)
@@ -35,20 +41,17 @@ export default class Server implements Party.Server {
       case "user_join_event":
 
         if (this.gameStarted || this.userQueue.length == 4) {
+          // -- need to add the error message in client
           sender.close()
           return
         }
-
-        let currentUserIndexByName = this.userQueue.findIndex(e=>e.name == postMessage.username)
-        let currentUserIndexByConn = this.userQueue.findIndex(e=>e.connId == sender.id)
+        // if user with name present in room then replace previous connection id with new connection id
+        
+        let currentUserIndexByName = this.userQueue.findIndex(e => e.name == postMessage.username)
 
         if (currentUserIndexByName > -1) {
 
           this.userQueue[currentUserIndexByName].connId = sender.id
-
-        } else if (currentUserIndexByConn > -1) {
-
-          this.userQueue[currentUserIndexByConn].name = postMessage.username
 
         } else {
 
@@ -63,57 +66,49 @@ export default class Server implements Party.Server {
         }
 
         this.room.broadcast(JSON.stringify({ type: 'user_join_response', userQueue: this.userQueue, userIndex: this.userIndex }))
+
         break;
-
-      case "dice_roll_event":
-
-      if (this.winners.includes(this.userQueue[this.userIndex].name)) {
-        return
-      }
+        
+        case "dice_roll_event":
 
         if (this.userQueue[this.userIndex].connId == sender.id) {
+        
           if (this.userIndex == 0 && !this.gameStarted) {
             this.gameStarted = true
           }
+        
           if (this.gameStarted) {
 
-            const dice = Math.ceil(Math.random() * 5.999)
+            // const dice = Math.ceil(Math.random() * 5.999)
+            const dice = 99
+            
             const currentUserIndex = this.userIndex
             const currentPos = this.userQueue[currentUserIndex].pos
-            let count = 0
+            
+            // add dice value to current pos & limit to 99
             this.userQueue[this.userIndex].pos = (dice + currentPos <= 99 ? currentPos + dice : currentPos)
 
-            // set position of the current player 
-
-            // update player to next player
-            this.userIndex = (currentUserIndex + 1) % this.userQueue.length;
-
-            // player reaches the end of the game
+            // updating the userIndex 
+            this.userIndex = getNextUserIndex(this.userQueue,this.userIndex,this.winners)
+              
+            // user reaches the end of the game
             if (this.userQueue[currentUserIndex].pos == 99) {
-              const currentUser = this.userQueue[currentUserIndex].name
-              this.winners.push(currentUser)
-              this.room.broadcast(JSON.stringify({ type: 'player_won', winners: this.winners }))
+              this.winners.push(this.userQueue[currentUserIndex].name)            
             }
 
-            let outcome = { pos: 0, value: '' }
+            const pos = String(this.userQueue[currentUserIndex].pos)            
+            const outcome = getCurrentPositionOutcome(pos)
 
-            const pos = String(this.userQueue[currentUserIndex].pos)
-
-            if (snakes_ladders_pos["snakes"][pos]) {
-
-              outcome = { value: 'snake', pos: snakes_ladders_pos["snakes"][pos] }
-
-            } else if (snakes_ladders_pos["ladders"][pos]) {
-
-              outcome = { value: 'ladder', pos: snakes_ladders_pos["ladders"][pos] }
-
-            }
             if (outcome.pos == 0) {
-              this.room.broadcast(JSON.stringify({ type: 'dice_roll_response', userQueue: this.userQueue, userIndex: this.userIndex, dice, winners: this.winners }))
+              
+              this.room.broadcast(JSON.stringify({ type: 'dice_roll_response', userQueue: this.userQueue, nextUserIndex: this.userIndex, currentUserIndex, dice, winners: this.winners }))
+            
             } else {
+
               const tempPlayer = { ...this.userQueue[currentUserIndex] }
+              // revisit -- to pass only intermediate player position
               this.userQueue[currentUserIndex].pos = outcome.pos
-              this.room.broadcast(JSON.stringify({ type: 'snake_or_ladder', userQueue: this.userQueue, userIndex: this.userIndex, currentUserIndex, outcome: outcome.value, tempPlayer: tempPlayer, dice }))
+              this.room.broadcast(JSON.stringify({ type: 'snake_or_ladder', userQueue: this.userQueue, nextUserIndex: this.userIndex, currentUserIndex, outcome: outcome.value, tempPlayer: tempPlayer, dice }))
             }
           }
         }
