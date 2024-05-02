@@ -11,18 +11,23 @@ import { useStore } from '@/store/store';
 import {motion} from 'framer-motion'
 import toast, { Toaster } from 'react-hot-toast';
 import Confetti from 'react-confetti'
+import Image from 'next/image';
 
 const Multiplay = ({ params }: { params: { roomId: string } }) => {
 
   const store = useStore<StoreType>(state => state)
   const [playerWon, setPlayerWon] = useState(false)
   const [users, setUsers] = React.useState<UserStateType>({ userQueue: [], userIndex: 0,winners:[] })
-
+  const [dice,setDice] = React.useState(null)
+  const gameOver = (users.userQueue.length == users.winners.length + 1) && users.userQueue.length > 1
+  const buttonDisabled =  (users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99) || users.userQueue.length == 1 || gameOver
   const router = useRouter()
 
-  if (store.user == '') {
-    router.push('/')
-  }
+  useEffect(()=>{
+    if (store.user == '') {
+      router.push('/')
+    }
+  },[])
 
   const size = 10;
   const zigzagNumbers = generateZigzag(size);
@@ -76,7 +81,10 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
       case 'dice_roll_response':        
         console.log(parsedMsg,"parsedMsg")
         console.log(parsedMsg.userQueue[parsedMsg.currentUserIndex].pos,"pos")
-        toast( parsedMsg.userQueue[parsedMsg.currentUserIndex].name +" : "+ parsedMsg.dice,{duration:1000})
+        setDice(parsedMsg.dice)
+        setTimeout(()=>{
+          setDice(null)
+        },700)
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.nextUserIndex,winners:parsedMsg.winners })
         
         // if player wins
@@ -90,6 +98,10 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
       case 'snake_or_ladder':
 
         toast(username, { icon: parsedMsg.outcome == 'ladder' ? '🔼':'🐍',duration:2000}); 
+        setDice(parsedMsg.dice)
+        setTimeout(()=>{
+          setDice(null)
+        },700)
         let tempQueue = [...parsedMsg.userQueue]
         tempQueue[parsedMsg.currentUserIndex] = parsedMsg.tempPlayer
         // set to new pos
@@ -99,9 +111,6 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
           setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.nextUserIndex,winners:users.winners })
         },500)
         break;
-
-      case 'player_won':
-        console.log("player")  
     }
   }
 
@@ -111,7 +120,8 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   };
   
   return (
-    <div className='flex flex-col'>
+    
+    <div className='flex flex-col bg-black/80 p-4 rounded-lg'>
 
       <Toaster  position='top-center' />
       {playerWon &&
@@ -119,7 +129,8 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
           <Confetti height={window.innerHeight} width={window.innerWidth} />
         </div>
       }
-      <div className='w-full bg-black mb-8 flex gap-4'>
+      {gameOver && <div className='z-50 absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] bg-red-500 text-3xl text-white rounded-xl font-bold p-4'>Game Over!!!</div>}
+      <div className='w-full mb-4 flex gap-4'>
            {
               users.userQueue.map(e=>{
                 const winner = users.winners.includes(e.name)
@@ -128,15 +139,24 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
               })
            }
       </div>
-      <div className="board rounded-md bg-black">
+      <div className="board rounded-md bg-black mb-4">
         {
           board
         }
       </div>
+     <div className='w-full h-[50px] grid place-items-center'>
+       {dice && <motion.div
+                  initial={{scale:0.5,opacity:0.8}}
+                  animate={{scale:1,opacity:1}}
+                  exit={{scale:0.2,opacity:0.8}}
+                >
+                  <Image alt="dice" className='rounded-lg' width={50} height={50} src={`/dice${dice}.webp`}/>
+                </motion.div> }
+     </div>
       { 
         <button
-          disabled={(users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99) }
-          className={`bg-indigo-500 mt-8 p-2 rounded-md ${ (users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99)  ? 'opacity-40' : 'opacity-100'}`}
+          disabled={buttonDisabled}
+          className={`bg-indigo-500 mt-4 p-2 rounded-md ${ (users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99)  ? 'opacity-40' : 'opacity-100'}`}
           onClick={rollDice}>roll dice
         </button>
       }

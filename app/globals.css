@@ -11,3 +11,7 @@ body{
   background-color: #000;
 }
 
+.bg-banner{
+  background-image: url('/bg-banner.jpg');
+  background-size: cover;
+}

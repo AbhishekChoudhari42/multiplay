@@ -79,8 +79,8 @@ export default class Server implements Party.Server {
         
           if (this.gameStarted) {
 
-            // const dice = Math.ceil(Math.random() * 5.999)
-            const dice = 99
+            const dice = Math.ceil(Math.random() * 5.999)
+            // const dice = 99
             
             const currentUserIndex = this.userIndex
             const currentPos = this.userQueue[currentUserIndex].pos
