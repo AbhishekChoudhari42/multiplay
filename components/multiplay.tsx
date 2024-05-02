@@ -156,7 +156,7 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
       { 
         <button
           disabled={buttonDisabled}
-          className={`bg-indigo-500 mt-4 p-2 rounded-md ${ (users.userQueue[users.userIndex]?.name != store.user) || (users.userQueue[users.userIndex].pos == 99)  ? 'opacity-40' : 'opacity-100'}`}
+          className={`bg-indigo-500 mt-4 p-2 rounded-md ${ buttonDisabled  ? 'opacity-40' : 'opacity-100'}`}
           onClick={rollDice}>roll dice
         </button>
       }
