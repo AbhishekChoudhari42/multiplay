@@ -76,7 +76,6 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
     switch (parsedMsg.type) {
 
       case 'user_join_response':
-        console.log(parsedMsg)
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.userIndex,winners:[] })
         break;
 
@@ -85,12 +84,10 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
         break;
 
       case 'dice_roll_response':        
-        console.log(parsedMsg,"parsedMsg")
-        console.log(parsedMsg.userQueue[parsedMsg.currentUserIndex].pos,"pos")
         setDice(parsedMsg.dice)
         setTimeout(()=>{
           setDice(null)
-        },700)
+        },1500)
         setUsers({ userQueue: parsedMsg.userQueue, userIndex: parsedMsg.nextUserIndex,winners:parsedMsg.winners })
         
         // if player wins
@@ -121,7 +118,6 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   }
 
   const rollDice = () => {
-    console.log("diceee")
     socket.send(JSON.stringify({ type: "dice_roll_event" }));
   };
   

@@ -44,7 +44,6 @@ export const error = (room:Party.Room,message:string) => {
 export const rateLimit = (sender: Party.Connection,room:Party.Room) => {
 
     const now = new Date().getTime()
-    console.log('===', now)
 
     const prev = (sender.state && 'lastMessageTime' in sender.state && sender.state.lastMessageTime) as number
 
