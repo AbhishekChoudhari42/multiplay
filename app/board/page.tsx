@@ -6,8 +6,8 @@ import React from 'react'
 const page = ({ params }: { params: { roomId: string } }) => {
 
   return (
-    <div className='w-screen flex flex-col justify-center items-center h-screen'>
-      <div className='bg-black'>
+    <div className='w-screen h-screen'>
+      <div className=''>
         <Board/>
       </div>
     </div>

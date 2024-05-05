@@ -37,7 +37,11 @@ export function getRandomColor() {
     return '#' + randomColor.padStart(6, '0');
 }
 
-export const rateLimit = (sender: Party.Connection) => {
+export const error = (room:Party.Room,message:string) => {
+    room.broadcast(JSON.stringify({ type: 'error', message }))
+}
+
+export const rateLimit = (sender: Party.Connection,room:Party.Room) => {
 
     const now = new Date().getTime()
     console.log('===', now)
@@ -45,13 +49,10 @@ export const rateLimit = (sender: Party.Connection) => {
     const prev = (sender.state && 'lastMessageTime' in sender.state && sender.state.lastMessageTime) as number
 
     if (prev && now < (prev + 200)) {
-        sender.close()
-        return false
+        sender.close(1008,"rate limit exceeded")
     } else {
         sender.setState({ lastMessageTime: now })
     }
-
-    return true
 }
 
 // find userIndex for next non winner user

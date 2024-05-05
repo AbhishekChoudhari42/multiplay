@@ -13,7 +13,9 @@ export type UserStateType = {
 }
   
 export type StoreType = {
-    user: string,
-    setUser: (userValue: string) => void
+    user:string,
+    setUser:(userValue:string)=>void,
+    error:string,
+    setError:(userValue:string)=>void
 }
 

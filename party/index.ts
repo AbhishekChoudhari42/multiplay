@@ -1,5 +1,5 @@
 import type * as Party from "partykit/server";
-import { getRandomColor, User , getNextUserIndex, getCurrentPositionOutcome} from "./utils";
+import { getRandomColor, User , getNextUserIndex, getCurrentPositionOutcome, rateLimit, error} from "./utils";
 
 export default class Server implements Party.Server {
 
@@ -40,11 +40,18 @@ export default class Server implements Party.Server {
 
       case "user_join_event":
 
-        if (this.gameStarted || this.userQueue.length == 4) {
-          // -- need to add the error message in client
-          sender.close()
+        rateLimit(sender,this.room)
+
+        if (this.gameStarted){
+          sender.close(1008,"Game has already started")
+          return
+        } 
+
+        if(this.userQueue.length == 4) {
+          sender.close(1008,"Maximum room size reached")
           return
         }
+
         // if user with name present in room then replace previous connection id with new connection id
         
         let currentUserIndexByName = this.userQueue.findIndex(e => e.name == postMessage.username)

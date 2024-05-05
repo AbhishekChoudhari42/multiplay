@@ -52,12 +52,18 @@ const Multiplay = ({ params }: { params: { roomId: string } }) => {
   const socket = usePartySocket({
     host: process.env.NEXT_PUBLIC_PARTYKIT_HOST,
     room: params.roomId ?? 'default_room',
-    onClose() {
+    onClose(event){
+      if(event.reason != ''){
+        toast.error(event.reason)
+      }else{
+        toast.error("Something went wrong please connect again")
+      }
       router.push('/')
     },
     onOpen() {
-      if (store.user != '') socket.send(JSON.stringify({ type: "user_join_event", username: store.user }));
-      toast.success('room joined!')
+      if (store.user != '' && store.error == ''){
+        socket.send(JSON.stringify({ type: "user_join_event", username: store.user }));
+      } 
     }
   });
 
